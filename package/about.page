@@ -1,9 +1,5 @@
 ---
-title: Packages
-description: Package helpers.
-author: Taufik Nurrohman
-type: Markdown
-version: 1.0.0
+title: Package
 ...
 
-Create, update, delete, compress and extract ZIP archive files.
+<!-- block:donate -->
