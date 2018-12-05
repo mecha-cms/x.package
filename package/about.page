@@ -1,5 +1,31 @@
 ---
 title: Package
+description: File packer and package extractor.
+author: Taufik Nurrohman
+type: Markdown
+version: 2.0.0
 ...
+
+### Folder to Archive
+
+~~~ .php
+Folder::open('.\path\to\folder')->packAs('foo.zip');
+~~~
+
+### Files to Archive
+
+~~~ .php
+File::open([
+    '.\path\to\file.css' => 'css\asset.css',
+    '.\path\to\file.js' => 'js\asset.js',
+    '.\path\to\file.html' => 'index.html'
+])->packAs('foo.zip');
+~~~
+
+### Extract Package
+
+~~~ .php
+Package::open('.\path\to\file.zip')->extract();
+~~~
 
 <!-- block:donate -->
