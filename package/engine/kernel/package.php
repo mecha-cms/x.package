@@ -198,7 +198,7 @@ class Package extends Genome {
                 $n = rtrim($name, DS);
                 $d = substr($name, -1) === DS;
                 if (strpos($n, DS) !== false) {
-                    $folders[explode(DS, $n)[0]] = 1;
+                    $folders[explode(DS, $n)[0]] = 0;
                 }
                 if (!$deep && strpos($n, DS) !== false) {
                     continue;
