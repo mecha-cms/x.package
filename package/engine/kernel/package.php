@@ -18,7 +18,14 @@ class Package extends Genome {
         $source = $this->source;
         $path = strtr($path, '/', DS);
         $zip = $this->zip;
-        $status = $zip->open($path, file_exists($path) ? \ZipArchive::OVERWRITE : \ZipArchive::CREATE);
+        if (file_exists($path)) {
+            $mode = \ZipArchive::OVERWRITE;
+        } else {
+            // <http://php.net/manual/en/ziparchive.close.php#104051>
+            Folder::create(dirname($path));
+            $mode = \ZipArchive::CREATE;
+        }
+        $status = $zip->open($path, $mode);
         if ($status !== true) {
             Guardian::abort($zip->getStatusString());
         }
