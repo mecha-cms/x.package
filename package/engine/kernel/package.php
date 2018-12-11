@@ -2,8 +2,8 @@
 
 class Package extends Genome {
 
+    public $source = null;
     public $zip = null;
-    public $path = null;
 
     // Cache!
     private static $inspect = [];
@@ -11,11 +11,11 @@ class Package extends Genome {
 
     public function __construct($path = null) {
         $this->zip = new \ZipArchive;
-        $this->path = $path;
+        $this->source = $path;
     }
 
     public function packTo(string $path, $bucket = false) {
-        $source = $this->path;
+        $source = $this->source;
         $path = strtr($path, '/', DS);
         $zip = $this->zip;
         $status = $zip->open($path, file_exists($path) ? \ZipArchive::OVERWRITE : \ZipArchive::CREATE);
@@ -51,7 +51,7 @@ class Package extends Genome {
     }
 
     public function packAs(string $name, $bucket = false) {
-        $path = $this->path;
+        $path = $this->source;
         if (is_array($path)) {
             end($path);
             $path = key($path);
@@ -60,7 +60,7 @@ class Package extends Genome {
     }
 
     public function pack($bucket = false) {
-        $path = $this->path;
+        $path = $this->source;
         if (is_array($path)) {
             end($path);
             $path = key($path);
@@ -69,7 +69,7 @@ class Package extends Genome {
     }
 
     public function extractTo(string $path) {
-        $source = strtr($this->path, '/', DS);
+        $source = strtr($this->source, '/', DS);
         $zip = $this->zip;
         $status = $zip->open($source);
         if ($status !== true) {
@@ -85,11 +85,11 @@ class Package extends Genome {
 
     public function extractAs($bucket = false) {
         if ($bucket) {
-            $bucket = DS . strtr($bucket === true ? Path::N($this->path) : $bucket, '/', DS);
+            $bucket = DS . strtr($bucket === true ? Path::N($this->source) : $bucket, '/', DS);
         } else {
             $bucket = "";
         }
-        return $this->extractTo(dirname($this->path) . $bucket);
+        return $this->extractTo(dirname($this->source) . $bucket);
     }
 
     public function extract() {
@@ -98,7 +98,7 @@ class Package extends Genome {
 
     public function delete($files = null) {
         self::$explore = []; // Reset cache
-        $path = $this->path;
+        $path = $this->source;
         if (!isset($files)) {
             File::open($path)->delete();
         } else {
@@ -126,7 +126,7 @@ class Package extends Genome {
                 $zip->close();
             }
         }
-        return self::explore($this->path, true);
+        return self::explore($this->source, true);
     }
 
     // Alias for `delete`
@@ -136,7 +136,7 @@ class Package extends Genome {
 
     public function set($path, string $source = null) {
         $zip = $this->zip;
-        if ($zip->open($this->path) === true) {
+        if ($zip->open($this->source) === true) {
             self::$explore = []; // Reset cache
             if (is_string($path)) {
                 $zip->addFile($source, $path);
@@ -152,7 +152,7 @@ class Package extends Genome {
 
     public function put($binary, string $path = null) {
         $zip = $this->zip;
-        if ($zip->open($this->path) === true) {
+        if ($zip->open($this->source) === true) {
             self::$explore = []; // Reset cache
             if (is_string($binary)) {
                 $zip->addFromString($path, $binary);
@@ -170,6 +170,12 @@ class Package extends Genome {
     public function get() {}
     public function read() {}
 
+    // To be packed
+    public static function from($files) {
+        return new static($files);
+    }
+
+    // To be extracted
     public static function open(string $package) {
         return new static($package);
     }
