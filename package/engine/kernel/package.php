@@ -37,6 +37,9 @@ class Package extends Genome {
         if (is_array($source)) {
             foreach ($source as $k => $v) {
                 if (file_exists($k)) {
+                    if (is_dir($k)) {
+                        continue;
+                    }
                     $zip->addFile($k, $bucket . $v);
                 }
             }
