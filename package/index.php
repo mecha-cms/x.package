@@ -6,5 +6,5 @@ if (!extension_loaded('zip')) {
     }
 } else {
     // Require the plug manually…
-    r(['file', 'folder'], __DIR__ . DS . 'engine' . DS . 'plug', Lot::get());
+    r(__DIR__ . DS . 'engine' . DS . 'plug' . DS . '%[file,folder]%');
 }

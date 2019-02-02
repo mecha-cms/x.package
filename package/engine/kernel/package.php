@@ -245,6 +245,7 @@ class Package extends Genome {
         return !empty($out) ? $out : $fail;
     }
 
+    /* TODO
     public static function inspect(string $path, $key = null, $fail = false) {
         $id = json_encode(func_get_args());
         $out = File::inspect($path);
@@ -260,5 +261,6 @@ class Package extends Genome {
         self::$inspect[$id] = $out;
         return isset($key) ? Anemon::get($out, $key, $fail) : $out;
     }
+    */
 
 }
