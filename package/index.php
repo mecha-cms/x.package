@@ -6,5 +6,6 @@ if (!extension_loaded('zip')) {
     }
 } else {
     // Require the plug manually…
-    r(__DIR__ . DS . 'engine' . DS . 'plug' . DS . '%[file,folder]%');
+    require __DIR__ . DS . 'engine' . DS . 'plug' . DS . 'file.php';
+    require __DIR__ . DS . 'engine' . DS . 'plug' . DS . 'folder.php';
 }

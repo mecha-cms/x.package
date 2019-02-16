@@ -6,7 +6,6 @@ class Package extends Genome {
     public $zip = null;
 
     // Cache!
-    private static $inspect = [];
     private static $explore = [];
 
     public function __construct($path = null) {
@@ -245,6 +244,41 @@ class Package extends Genome {
         return !empty($out) ? $out : $fail;
     }
 
+    public function comment() {
+        $zip = $this->zip;
+        if ($zip->open($this->source) === true) {
+            return (string) $zip->comment;
+        }
+        return null;
+    }
+
+    public function files(): array {
+        $zip = $this->zip;
+        $files = [];
+        if ($zip->open($this->source) === true) {
+            for ($i = 0; $i < $zip->numFiles; ++$i) {
+                if ($stat = $zip->statIndex($i)) {
+                    $path = strtr($stat['name'], '/', DS);
+                    $files[rtrim($path, DS)] = [
+                        0 => substr($path, -1) === DS, // Is folder
+                        1 => substr($path, -1) !== DS, // Is file
+                        'size' => File::sizer($stat['comp_size']),
+                        '_size' => $stat['comp_size']
+                    ];
+                }
+            }
+        }
+        return $files;
+    }
+
+    public function status(): int {
+        $zip = $this->zip;
+        if ($zip->open($this->source) === true) {
+            return $zip->status;
+        }
+        return -1;
+    }
+
     /* TODO
     public static function inspect(string $path, $key = null, $fail = false) {
         $id = json_encode(func_get_args());
@@ -254,9 +288,6 @@ class Package extends Genome {
         if ($zip->open($path) === true) {
             $out['status'] = $zip->status;
             $out['comment'] = $zip->comment;
-            for ($i = 0; $i < $zip->numFiles; ++$i) {
-                $out['package'][] = $zip->statIndex($i);
-            }
         }
         self::$inspect[$id] = $out;
         return isset($key) ? Anemon::get($out, $key, $fail) : $out;
