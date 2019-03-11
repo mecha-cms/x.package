@@ -3,7 +3,7 @@ title: Package
 description: File packer and package extractor.
 author: Taufik Nurrohman
 type: Markdown
-version: 2.0.1
+version: 2.0.2
 ...
 
 ### Folder to Archive
