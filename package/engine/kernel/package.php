@@ -1,293 +1,264 @@
 <?php
 
-class Package extends Genome {
+class Package extends Folder {
 
-    // Cache!
-    private static $explore = [];
-    public $source = null;
-    public $zip = null;
+    protected function getRoot() {
+        $root = true === $this->root ? $this->path : $this->root;
+        return !empty($root) || '0' === $root ? strtr($root, '/', DS) . DS : "";
+    }
 
-    /* TODO
-    public static function inspect(string $path, $key = null, $fail = false) {
-        $id = json_encode(func_get_args());
-        $out = File::inspect($path);
-        $out['package'] = [];
-        $zip = new \ZipArchive;
-        if ($zip->open($path) === true) {
-            $out['status'] = $zip->status;
-            $out['comment'] = $zip->comment;
+    public $exist;
+    public $path;
+    public $root;
+    public $value;
+
+    public function __construct(string $path = null) {
+        $this->value[0] = null;
+        if ($path && is_string($path) && 0 === strpos($path, ROOT)) {
+            $path = strtr($path, '/', DS);
+            if (!is_file($path)) {
+                if (!is_dir($d = dirname($path))) {
+                    mkdir($d, 0775, true);
+                }
+                touch($path); // Create an empty package
+            }
+            $this->path = is_file($path) ? (realpath($path) ?: $path) : null;
         }
-        self::$inspect[$id] = $out;
-        return isset($key) ? Anemon::get($out, $key, $fail) : $out;
-    }
-    */
-
-    public function __construct($path = null) {
-        $this->zip = new \ZipArchive;
-        $this->source = $path;
+        $this->exist = !!$this->path;
     }
 
-    public function comment() {
-        $zip = $this->zip;
-        if ($zip->open($this->source) === true) {
-            return (string) $zip->comment;
+    public function comment(string $comment = null) {
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                if (!isset($comment)) {
+                    $comment = $z->getArchiveComment();
+                    return "" !== $comment ? $comment : null;
+                }
+                $z->setArchiveComment($comment);
+            }
+            $z->close();
+        }
+        return $this;
+    }
+
+    public function count() {
+        $count = 0;
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $count = $z->numFiles;
+            }
+            $z->close();
+        }
+        return $count;
+    }
+
+    public function extract(string $to = null, $files = null) {
+        $this->value[1] = [];
+        if ($this->exist && $path = $this->path) {
+            $z = new \ZipArchive;
+            if (true === $z->open($path)) {
+                if (!is_dir($to = $to ?? dirname($path))) {
+                    mkdir($to, 0775, true);
+                }
+                $z->extractTo($to, isset($files) ? (array) $files : null);
+            }
+            $z->close();
+            $this->value[1] = array_keys(y(g($to, null, true)));
+        }
+        return $this;
+    }
+
+    public function get($x = null, $deep = 0) {
+        $out = [];
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $root = $this->getRoot();
+                for ($i = 0, $j = $z->numFiles; $i < $j; ++$i) {
+                    $n = $z->getNameIndex($i);
+                    if (
+                        null === $x ||
+                        1 === $x ||
+                        is_string($x) && false !== strpos(',' . $x . ',', ',' . pathinfo($n, PATHINFO_EXTENSION) . ',')
+                    ) {
+                        if (true === $deep || $deep >= substr_count($n, '/')) {
+                            $out[$root . strtr($n, '/', DS)] = 1;
+                        }
+                    }
+                    if (false !== strpos($n, '/') && (null === $x || 0 === $x)) {
+                        if (true === $deep || $deep >= substr_count($n, '/') - 1) {
+                            $out[$root . strtr(dirname($n), '/', DS)] = 0;
+                        }
+                    }
+                }
+            }
+            $z->close();
+        }
+        ksort($out);
+        return $out;
+    }
+
+    public function getIterator() {
+        return $this->stream(null, true, true);
+    }
+
+    public function jsonSerialize() {
+        $out = [$this->path => 1];
+        $root = $this->getRoot();
+        foreach ($this->stream(null, true) as $k => $v) {
+            $out[$root . $k] = $v;
+        }
+        return $out;
+    }
+
+    public function let($any = true) {
+        $out = [];
+        if ($this->exist) {
+            $path = $this->path;
+            if (true === $any) {
+                $out[$path] = unlink($path) ? 1 : null;
+            } else {
+                $z = new \ZipArchive;
+                if (true === $z->open($path)) {
+                    $root = $this->getRoot();
+                    foreach ((array) $any as $v) {
+                        $v = strtr($v, '/', DS);
+                        $n = strtr($v, DS, '/');
+                        $out[$root . $v] = false !== $z->locateName($n) ? 1 : 0;
+                        if (!$z->deleteName($n) && !$z->deleteName($n . '/')) {
+                            $out[$root . $v] = null;
+                        }
+                    }
+                }
+                $z->close();
+            }
+        }
+        $this->value[1] = $out;
+        return $this;
+    }
+
+    public function name($x = false) {
+        if ($this->exist && $path = $this->path) {
+            if (true === $x) {
+                return basename($path);
+            }
+            return pathinfo($path, PATHINFO_FILENAME) . (is_string($x) ? '.' . $x : "");
         }
         return null;
     }
 
-    public function delete($files = null) {
-        self::$explore = []; // Reset cache
-        $path = $this->source;
-        if (!isset($files)) {
-            File::open($path)->delete();
-        } else {
-            $zip = $this->zip;
-            if ($zip->open($path) === true) {
-                foreach ((array) $files as $file) {
-                    $file = strtr($file, DS, '/');
-                    if ($zip->locateName($file) !== false) {
-                        $zip->deleteName($file);
-                    } else {
-                        // TODO: Remove folder and its content(s)
-                        $explore = self::explore($path, true);
-                        krsort($explore);
-                        foreach ($explore as $k => $v) {
-                            $k = strtr($k, DS, '/');
-                            if (strpos($k, $file . '/') === 0) {
-                                $zip->deleteName($k);
-                            } else if ($k === $file) {
-                                $zip->deleteName($k . '/');
-                            }
-                        }
-                        $zip->deleteName($file . '/');
-                    }
-                }
-                $zip->close();
+    public function offsetExists($i) {
+        $out = false;
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $out = false !== $z->locateName(strtr($i, DS, '/'));
             }
+            $z->close();
         }
-        return self::explore($this->source, true);
+        return $out;
     }
 
-    public function extract() {
-        return $this->extractAs(false);
-    }
-
-    public function extractAs($bucket = false) {
-        if ($bucket) {
-            $bucket = DS . strtr($bucket === true ? Path::N($this->source) : $bucket, '/', DS);
-        } else {
-            $bucket = "";
-        }
-        return $this->extractTo(dirname($this->source) . $bucket);
-    }
-
-    public function extractTo(string $path) {
-        $source = strtr($this->source, '/', DS);
-        $zip = $this->zip;
-        $status = $zip->open($source);
-        if ($status !== true) {
-            Guard::abort($zip->getStatusString());
-        }
-        if (!is_dir($path)) {
-            Folder::create($path);
-        }
-        $zip->extractTo($path);
-        $zip->close();
-        return self::explore($source, true);
-    }
-
-    public function files(): array {
-        $zip = $this->zip;
-        $files = [];
-        if ($zip->open($this->source) === true) {
-            for ($i = 0; $i < $zip->numFiles; ++$i) {
-                if ($stat = $zip->statIndex($i)) {
-                    $path = strtr($stat['name'], '/', DS);
-                    $files[rtrim($path, DS)] = [
-                        0 => substr($path, -1) === DS, // Is folder
-                        1 => substr($path, -1) !== DS, // Is file
-                        'size' => File::sizer($stat['comp_size']),
-                        '_size' => $stat['comp_size']
-                    ];
-                }
+    public function offsetGet($i) {
+        $out = null;
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $out = $z->getFromName(strtr($i, DS, '/'));
             }
+            $z->close();
         }
-        return $files;
+        return $out;
     }
 
-    // TODO
-    public function get() {}
-    public function read() {}
-
-    public function pack($bucket = false) {
-        $path = $this->source;
-        if (is_array($path)) {
-            end($path);
-            $path = key($path);
-        }
-        return $this->packAs(Path::N($path) . '.zip', $bucket);
-    }
-
-    public function packAs(string $name, $bucket = false) {
-        $path = $this->source;
-        if (is_array($path)) {
-            end($path);
-            $path = key($path);
-        }
-        return $this->packTo(dirname($path) . DS . $name, $bucket);
-    }
-
-    public function packTo(string $path, $bucket = false) {
-        $source = $this->source;
-        $path = strtr($path, '/', DS);
-        $zip = $this->zip;
-        if (is_file($path)) {
-            $mode = \ZipArchive::OVERWRITE;
-        } else {
-            // <http://php.net/manual/en/ziparchive.close.php#104051>
-            Folder::create(dirname($path));
-            $mode = \ZipArchive::CREATE;
-        }
-        $status = $zip->open($path, $mode);
-        if ($status !== true) {
-            Guard::abort($zip->getStatusString());
-        }
-        if ($bucket) {
-            $bucket = strtr($bucket === true ? Path::N($path) : (string) $bucket, '/', DS) . DS;
-        } else {
-            $bucket = "";
-        }
-        if (is_array($source)) {
-            foreach ($source as $k => $v) {
-                if (is_file($k)) {
-                    $zip->addFile($k, $bucket . $v);
-                }
-            }
-        } else if (is_dir($source)) {
-            $r = $source . DS;
-            foreach (File::explore($source, true) as $k => $v) {
-                if ($v === 0) {
-                    $zip->addEmptyDir($name = rtrim(str_replace($r, "", $bucket . $k . DS), DS));
+    public function offsetSet($i, $value) {
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                if ([] === $value) {
+                    $z->addEmptyDir(strtr($i, DS, '/'));
                 } else {
-                    $zip->addFile($k, $name = str_replace($r, "", $bucket . $k));
+                    $z->addFromString(strtr($i, DS, '/'), (string) $value);
                 }
-                $zip->setCompressionName($name, \ZipArchive::CM_DEFAULT);
             }
-        } else if (is_file($source)) {
-            $zip->addFile($source, $bucket . basename($source));
+            $z->close();
         }
-        $zip->close();
-        return self::explore($path, true);
     }
 
-    public function put($binary, string $path = null) {
-        $zip = $this->zip;
-        if ($zip->open($this->source) === true) {
-            self::$explore = []; // Reset cache
-            if (is_string($binary)) {
-                $zip->addFromString($path, $binary);
-            } else {
-                foreach ((array) $binary as $k => $v) {
-                    $zip->addFromString($k, $v);
-                }
+    public function offsetUnset($i) {
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $z->deleteName(strtr($i, DS, '/'));
+                $z->deleteName(strtr($i, DS, '/') . '/');
             }
-            $zip->close();
+            $z->close();
         }
+    }
+
+    public function paste(string $from, string $to) {
+        $out = [null];
+        if ($this->exist && $path = $this->path) {
+            $z = new \ZipArchive;
+            if (true === $z->open($path)) {
+                if (is_file($from)) {
+                    $out[0] = $from;
+                    $z->addFile($from, strtr($to, DS, '/'));
+                }
+                $out[1] = $this->getRoot() . strtr($to, '/', DS);
+            }
+            $z->close();
+        }
+        $this->value[1] = $out;
         return $this;
     }
 
-    // Alias for `delete`
-    public function reset($files = null) {
-        return $this->delete($files);
-    }
-
-    public function set($path, string $source = null) {
-        $zip = $this->zip;
-        if ($zip->open($this->source) === true) {
-            self::$explore = []; // Reset cache
-            if (is_string($path)) {
-                $zip->addFile($source, $path);
-            } else {
-                foreach ((array) $path as $k => $v) {
-                    $zip->addFile($v, $k);
-                }
+    public function save($seal = null) {
+        $out = false; // Return `false` if `$this` is just a placeholder
+        if ($path = $this->path) {
+            if (isset($seal)) {
+                $this->seal($seal);
             }
-            $zip->close();
+            // Return `$path` on success
+            $out = $path;
         }
+        $this->value[1] = $out;
         return $this;
     }
 
-    public function status(): int {
-        $zip = $this->zip;
-        if ($zip->open($this->source) === true) {
-            return $zip->status;
-        }
-        return -1;
+    public function set(string $path, $value) {
+        return $this->offsetSet($path, $value);
     }
 
-    public static function explore($archive, $deep = false, $fail = []) {
-        $id = json_encode(func_get_args());
-        if (isset(self::$explore[$id])) {
-            $out = self::$explore[$id];
-            return !empty($out) ? $out : $fail;
+    public function size(string $unit = null, int $r = 2) {
+        if (null !== ($size = $this->_size())) {
+            return File::sizer($size, $unit, $r);
         }
-        $x = null;
-        if (is_array($archive)) {
-            $x = $archive[1] ?? null;
-            $archive = $archive[0];
-        }
-        $archive = strtr($archive, '/', DS);
-        if (!is_file($archive)) {
-            return $fail;
-        }
-        $out = [];
-        $zip = new \ZipArchive;
-        if ($zip->open($archive) === true) {
-            $folders = [];
-            for ($i = 0; $i < $zip->numFiles; ++$i) {
-                $name = strtr($zip->statIndex($i)['name'], '/', DS);
-                $n = rtrim($name, DS);
-                $d = substr($name, -1) === DS;
-                if (strpos($n, DS) !== false) {
-                    $folders[explode(DS, $n)[0]] = 0;
-                }
-                if (!$deep && strpos($n, DS) !== false) {
-                    continue;
-                }
-                if ($x === 0) {
-                    if ($d) {
-                        $out[$n] = 0;
-                    }
-                } else if ($x === 1) {
-                    if (!$d) {
-                        $out[$n] = 1;
-                    }
-                } else if (is_string($x)) {
-                    if (!$d && strpos(',' . $x . ',', ',' . strtolower(pathinfo($n, PATHINFO_EXTENSION)) . ',') !== false) {
-                        $out[$n] = 1;
-                    }
-                } else {
-                    $out[$n] = $d ? 0 : 1;
+        return null;
+    }
+
+    public function stream($x = null, $deep = 0, $content = false): \Generator {
+        if ($content) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                foreach ($this->get($x, $deep) as $k => $v) {
+                    yield $k => 0 === $v ? [] : $z->getFromName(strtr($k, DS, '/'));
                 }
             }
-            if ($folders && ($x === 0 || $x === null)) {
-                // TODO: Set proper folder order in the result list
-                $out = concat($out, $folders);
-            }
-            $zip->close();
+            $z->close();
+        } else {
+            yield from $this->get($x, $deep);
         }
-        self::$explore[$id] = $out;
-        return !empty($out) ? $out : $fail;
     }
 
-    // To be packed
-    public static function from($files) {
-        return new static($files);
+    public function type() {
+        return $this->exist ? mime_content_type($this->path) : null;
     }
 
-    // To be extracted
-    public static function open(string $package) {
-        return new static($package);
+    public function x() {
+        return $this->exist ? pathinfo($this->path, PATHINFO_EXTENSION) : null;
     }
 
 }

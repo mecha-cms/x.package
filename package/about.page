@@ -3,29 +3,163 @@ title: Package
 description: File packer and package extractor.
 author: Taufik Nurrohman
 type: Markdown
-version: 2.0.2
+version: 2.1.0
 ...
 
-### Folder to Archive
+This extension provides various API to work with [ZIP](http://www.php.net/manual/en/book.zip.php "PHP · ZIP") files. ZIP is an archive file format that supports lossless data compression. A ZIP file may contain one or more files or directories that may have been compressed. ZIP files generally use the file extensions `.zip` and the MIME media type `application/zip`.
+
+### Pack
+
+Create package of a folder with its entries:
 
 ~~~ .php
-Folder::open('.\path\to\folder')->packAs('foo.zip');
+$folder = new Folder('.\path\to\folder');
+$folder->exist && $folder->pack('.\path\to\package.zip');
 ~~~
 
-### Files to Archive
+Create package of a file:
 
 ~~~ .php
-File::open([
-    '.\path\to\file.css' => 'css\asset.css',
-    '.\path\to\file.js' => 'js\asset.js',
-    '.\path\to\file.html' => 'index.html'
-])->packAs('foo.zip');
+$file = new File('.\path\to\file.txt');
+$file->exist && $file->pack('.\path\to\package.zip');
 ~~~
 
-### Extract Package
+Create package of files:
 
 ~~~ .php
-Package::open('.\path\to\file.zip')->extract();
+$package = new Package('.\path\to\package.zip');
+
+$package->put('.\path\to\file-1.txt', 'file-1.txt');
+$package->put('.\path\to\file-2.txt', 'file-2.txt');
+$package->put('.\path\to\file-3.txt', 'foo\bar\file-3.txt');
 ~~~
 
-<!-- block:donate -->
+### Extract
+
+Extract package to the current folder:
+
+~~~ .php
+$package->extract();
+~~~
+
+Extract all files and folders from the package to a folder:
+
+~~~ .php
+$package->extract('.\path\to\folder');
+~~~
+
+Extract some files from the package to a folder:
+
+~~~ .php
+$package->extract('.\path\to\folder', [
+    'file-1.txt',
+    'file-2.txt',
+    'foo\bar\file-3.txt'
+]);
+~~~
+
+Extract a file from the package to a folder:
+
+~~~ .php
+$package->extract('.\path\to\folder', 'file-1.txt');
+~~~
+
+### Read
+
+List files and folders from the package:
+
+~~~ .php
+// Prepend root path to the results?
+$package->root = true;
+
+$A = $package->get(); // Get list of files and folders of the root level
+$B = $package->get(null, true); // Get list of files and folders recursively
+$C = $package->get(null, 2); // Get list of files and folders with maximum nesting level of 2
+$D = $package->get(1, true); // Get list of files only, recursively
+$E = $package->get(0, true); // Get list of folders only, recursively
+$F = $package->get('gif,jpeg,jpg,png', true); // Get list of image files only, recursively
+~~~
+
+Stream list of files and folders of the package:
+
+~~~ .php
+foreach ($package as $path => $content) { … }
+~~~
+
+Count total files stored in the package:
+
+~~~ .php
+echo count($package);
+~~~
+
+Get content of a file stored in the package:
+
+~~~ .php
+$content = $package['file-1.txt'];
+~~~
+
+Check the existence of a file stored in the package:
+
+~~~ .php
+if (isset($package['file-1.txt'])) { … }
+~~~
+
+### Add
+
+Add new file to the package:
+
+~~~ .php
+$package->set('file-1.txt', 'Content of `file-1.txt` goes here.');
+$package->set('file-2.txt', 'Content of `file-2.txt` goes here.');
+$package->set('foo\bar\file-3.txt', 'Content of `file-3.txt` goes here.');
+~~~
+
+~~~ .php
+$package['file-1.txt'] = 'Content of `file-1.txt` goes here.';
+$package['file-2.txt'] = 'Content of `file-2.txt` goes here.';
+$package['foo\bar\file-3.txt'] = 'Content of `file-3.txt` goes here.';
+~~~
+
+Add new folder to the package:
+
+~~~ .php
+$package->set('foo', []);
+$package->set('bar\baz\qux', []);
+~~~
+
+~~~ .php
+$package['foo'] = [];
+$package['bar\baz\qux'] = [];
+~~~
+
+Add copy of files to the package:
+
+~~~ .php
+$package->paste('.\path\to\file-1.txt', 'file-1.txt');
+$package->paste('.\path\to\file-2.txt', 'file-2.txt');
+$package->paste('.\path\to\file-3.txt', 'foo\bar\file-3.txt');
+~~~
+
+### Remove
+
+Remove the package:
+
+~~~ .php
+$package->let();
+~~~
+
+Remove files from the package:
+
+~~~ .php
+$package->let([
+    'file-1.txt',
+    'file-2.txt',
+    'foo\bar\file-3.txt'
+]);
+~~~
+
+Remove a file from the package:
+
+~~~ .php
+$package->let('file-1.txt');
+~~~

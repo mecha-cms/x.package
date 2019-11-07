@@ -1,13 +1,23 @@
 <?php
 
-Folder::_('packTo', function(string $path, $bucket = false) {
-    return Package::from($this->path)->packTo($path, $bucket);
-});
-
-Folder::_('packAs', function(string $name, $bucket = false) {
-    return Package::from($this->path)->packAs($name, $bucket);
-});
-
-Folder::_('pack', function($bucket = false) {
-    return Package::from($this->path)->pack($bucket);
+Folder::_('pack', function(string $as = null) {
+    $folder = $this->path;
+    $path = strtr($as ?? $folder . '.zip', '/', DS);
+    // Always create a new package
+    if (is_file($path)) {
+        unlink($path);
+    }
+    if (is_dir($folder)) {
+        $package = new Package($path);
+        foreach ($this->get(1, true) as $k => $v) {
+            $package->put($k, strtr($k, [
+                $folder . DS => "",
+                DS => '/'
+            ]));
+        }
+        $this->value[1] = $path;
+    } else {
+        $this->value[1] = null;
+    }
+    return $this;
 });
