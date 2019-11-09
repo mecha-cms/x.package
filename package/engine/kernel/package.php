@@ -42,11 +42,24 @@ class Package extends Folder {
         return $this;
     }
 
+    public function content(string $path) {
+        $out = null;
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $out = $z->getFromName(strtr($path, DS, '/'));
+            }
+            $z->close();
+        }
+        return $out;
+    }
+
     public function count() {
         $count = 0;
         if ($this->exist) {
             $z = new \ZipArchive;
             if (true === $z->open($this->path)) {
+                // Count file(s) only
                 $count = $z->numFiles;
             }
             $z->close();
@@ -65,7 +78,7 @@ class Package extends Folder {
                 $z->extractTo($to, isset($files) ? (array) $files : null);
             }
             $z->close();
-            $this->value[1] = array_keys(y(g($to, null, true)));
+            $this->value[1] = y(g($to, null, true));
         }
         return $this;
     }
@@ -102,6 +115,18 @@ class Package extends Folder {
 
     public function getIterator() {
         return $this->stream(null, true, true);
+    }
+
+    public function has(string $path) {
+        $out = false;
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $out = false !== $z->locateName(strtr($path, DS, '/'));
+            }
+            $z->close();
+        }
+        return $out;
     }
 
     public function jsonSerialize() {
@@ -149,55 +174,6 @@ class Package extends Folder {
         return null;
     }
 
-    public function offsetExists($i) {
-        $out = false;
-        if ($this->exist) {
-            $z = new \ZipArchive;
-            if (true === $z->open($this->path)) {
-                $out = false !== $z->locateName(strtr($i, DS, '/'));
-            }
-            $z->close();
-        }
-        return $out;
-    }
-
-    public function offsetGet($i) {
-        $out = null;
-        if ($this->exist) {
-            $z = new \ZipArchive;
-            if (true === $z->open($this->path)) {
-                $out = $z->getFromName(strtr($i, DS, '/'));
-            }
-            $z->close();
-        }
-        return $out;
-    }
-
-    public function offsetSet($i, $value) {
-        if ($this->exist) {
-            $z = new \ZipArchive;
-            if (true === $z->open($this->path)) {
-                if ([] === $value) {
-                    $z->addEmptyDir(strtr($i, DS, '/'));
-                } else {
-                    $z->addFromString(strtr($i, DS, '/'), (string) $value);
-                }
-            }
-            $z->close();
-        }
-    }
-
-    public function offsetUnset($i) {
-        if ($this->exist) {
-            $z = new \ZipArchive;
-            if (true === $z->open($this->path)) {
-                $z->deleteName(strtr($i, DS, '/'));
-                $z->deleteName(strtr($i, DS, '/') . '/');
-            }
-            $z->close();
-        }
-    }
-
     public function paste(string $from, string $to) {
         $out = [null];
         if ($this->exist && $path = $this->path) {
@@ -229,7 +205,18 @@ class Package extends Folder {
     }
 
     public function set(string $path, $value) {
-        return $this->offsetSet($path, $value);
+        if ($this->exist) {
+            $z = new \ZipArchive;
+            if (true === $z->open($this->path)) {
+                $path = strtr($path, DS, '/');
+                if ([] === $value) {
+                    $z->addEmptyDir($path);
+                } else {
+                    $z->addFromString($path, (string) $value);
+                }
+            }
+            $z->close();
+        }
     }
 
     public function size(string $unit = null, int $r = 2) {

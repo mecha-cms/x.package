@@ -3,7 +3,7 @@ title: Package
 description: File packer and package extractor.
 author: Taufik Nurrohman
 type: Markdown
-version: 2.1.0
+version: 2.1.1
 ...
 
 This extension provides various API to work with [ZIP](http://www.php.net/manual/en/book.zip.php "PHP · ZIP") files. ZIP is an archive file format that supports lossless data compression. A ZIP file may contain one or more files or directories that may have been compressed. ZIP files generally use the file extensions `.zip` and the MIME media type `application/zip`.
@@ -29,9 +29,9 @@ Create package of files:
 ~~~ .php
 $package = new Package('.\path\to\package.zip');
 
-$package->put('.\path\to\file-1.txt', 'file-1.txt');
-$package->put('.\path\to\file-2.txt', 'file-2.txt');
-$package->put('.\path\to\file-3.txt', 'foo\bar\file-3.txt');
+$package->paste('.\path\to\file-1.txt', 'file-1.txt');
+$package->paste('.\path\to\file-2.txt', 'file-2.txt');
+$package->paste('.\path\to\file-3.txt', 'foo\bar\file-3.txt');
 ~~~
 
 ### Extract
@@ -95,13 +95,13 @@ echo count($package);
 Get content of a file stored in the package:
 
 ~~~ .php
-$content = $package['file-1.txt'];
+$content = $package->content('file-1.txt');
 ~~~
 
 Check the existence of a file stored in the package:
 
 ~~~ .php
-if (isset($package['file-1.txt'])) { … }
+if ($package->has('file-1.txt')) { … }
 ~~~
 
 ### Add
@@ -114,22 +114,11 @@ $package->set('file-2.txt', 'Content of `file-2.txt` goes here.');
 $package->set('foo\bar\file-3.txt', 'Content of `file-3.txt` goes here.');
 ~~~
 
-~~~ .php
-$package['file-1.txt'] = 'Content of `file-1.txt` goes here.';
-$package['file-2.txt'] = 'Content of `file-2.txt` goes here.';
-$package['foo\bar\file-3.txt'] = 'Content of `file-3.txt` goes here.';
-~~~
-
 Add new folder to the package:
 
 ~~~ .php
 $package->set('foo', []);
 $package->set('bar\baz\qux', []);
-~~~
-
-~~~ .php
-$package['foo'] = [];
-$package['bar\baz\qux'] = [];
 ~~~
 
 Add copy of files to the package:
