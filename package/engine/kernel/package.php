@@ -185,13 +185,6 @@ class Package extends File {
         }
     }
 
-    public function size(string $unit = null, int $r = 2) {
-        if (null !== ($size = $this->_size())) {
-            return File::sizer($size, $unit, $r);
-        }
-        return null;
-    }
-
     public function stream($x = null, $deep = 0, $content = false): \Generator {
         if ($content) {
             $z = new \ZipArchive;
@@ -204,14 +197,6 @@ class Package extends File {
         } else {
             yield from $this->get($x, $deep);
         }
-    }
-
-    public function type() {
-        return $this->exist ? mime_content_type($this->path) : null;
-    }
-
-    public function x() {
-        return $this->exist ? pathinfo($this->path, PATHINFO_EXTENSION) : null;
     }
 
 }
