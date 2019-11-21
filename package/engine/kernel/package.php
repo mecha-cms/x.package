@@ -1,8 +1,8 @@
 <?php
 
-class Package extends Folder {
+class Package extends File {
 
-    protected function getRoot() {
+    protected function _root() {
         $root = true === $this->root ? $this->path : $this->root;
         return !empty($root) || '0' === $root ? strtr($root, '/', DS) . DS : "";
     }
@@ -11,21 +11,6 @@ class Package extends Folder {
     public $path;
     public $root;
     public $value;
-
-    public function __construct(string $path = null) {
-        $this->value[0] = null;
-        if ($path && is_string($path) && 0 === strpos($path, ROOT)) {
-            $path = strtr($path, '/', DS);
-            if (!is_file($path)) {
-                if (!is_dir($d = dirname($path))) {
-                    mkdir($d, 0775, true);
-                }
-                touch($path); // Create an empty package
-            }
-            $this->path = is_file($path) ? (realpath($path) ?: $path) : null;
-        }
-        $this->exist = !!$this->path;
-    }
 
     public function comment(string $comment = null) {
         if ($this->exist) {
@@ -83,12 +68,14 @@ class Package extends Folder {
         return $this;
     }
 
-    public function get($x = null, $deep = 0) {
+    public function get(...$lot) {
         $out = [];
+        $x = $lot[0] ?? null;
+        $deep = $lot[1] ?? 0;
         if ($this->exist) {
             $z = new \ZipArchive;
             if (true === $z->open($this->path)) {
-                $root = $this->getRoot();
+                $root = $this->_root();
                 for ($i = 0, $j = $z->numFiles; $i < $j; ++$i) {
                     $n = $z->getNameIndex($i);
                     if (
@@ -131,7 +118,7 @@ class Package extends Folder {
 
     public function jsonSerialize() {
         $out = [$this->path => 1];
-        $root = $this->getRoot();
+        $root = $this->_root();
         foreach ($this->stream(null, true) as $k => $v) {
             $out[$root . $k] = $v;
         }
@@ -147,7 +134,7 @@ class Package extends Folder {
             } else {
                 $z = new \ZipArchive;
                 if (true === $z->open($path)) {
-                    $root = $this->getRoot();
+                    $root = $this->_root();
                     foreach ((array) $any as $v) {
                         $v = strtr($v, '/', DS);
                         $n = strtr($v, DS, '/');
@@ -164,16 +151,6 @@ class Package extends Folder {
         return $this;
     }
 
-    public function name($x = false) {
-        if ($this->exist && $path = $this->path) {
-            if (true === $x) {
-                return basename($path);
-            }
-            return pathinfo($path, PATHINFO_FILENAME) . (is_string($x) ? '.' . $x : "");
-        }
-        return null;
-    }
-
     public function paste(string $from, string $to) {
         $out = [null];
         if ($this->exist && $path = $this->path) {
@@ -183,7 +160,7 @@ class Package extends Folder {
                     $out[0] = $from;
                     $z->addFile($from, strtr($to, DS, '/'));
                 }
-                $out[1] = $this->getRoot() . strtr($to, '/', DS);
+                $out[1] = $this->_root() . strtr($to, '/', DS);
             }
             $z->close();
         }
@@ -191,21 +168,10 @@ class Package extends Folder {
         return $this;
     }
 
-    public function save($seal = null) {
-        $out = false; // Return `false` if `$this` is just a placeholder
-        if ($path = $this->path) {
-            if (isset($seal)) {
-                $this->seal($seal);
-            }
-            // Return `$path` on success
-            $out = $path;
-        }
-        $this->value[1] = $out;
-        return $this;
-    }
-
-    public function set(string $path, $value) {
+    public function set(...$lot) {
         if ($this->exist) {
+            $path = $lot[0] ?? null;
+            $value = $lot[1] ?? null;
             $z = new \ZipArchive;
             if (true === $z->open($this->path)) {
                 $path = strtr($path, DS, '/');
