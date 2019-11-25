@@ -192,8 +192,10 @@ class Package extends File {
                 foreach ($this->get($x, $deep) as $k => $v) {
                     yield $k => 0 === $v ? [] : $z->getFromName(strtr($k, DS, '/'));
                 }
+                $z->close();
+            } else {
+                yield from [];
             }
-            $z->close();
         } else {
             yield from $this->get($x, $deep);
         }
