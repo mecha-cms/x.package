@@ -1,4 +1,9 @@
 Package Extension for Mecha
 ===========================
 
-Create, update, delete, compress and extract ZIP archive files.
+Release Notes
+-------------
+
+### 2.1.1
+
+ - Simplify the extension API.
