@@ -151,4 +151,4 @@ Remove a file from the package:
 
 ~~~ .php
 $package->let('file-1.txt');
-~~~
+~~~
